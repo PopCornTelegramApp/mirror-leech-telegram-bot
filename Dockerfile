@@ -12,4 +12,6 @@ COPY . .
 
 RUN sed -i 's/\r$//' *.sh
 
+EXPOSE 8080
+
 CMD ["bash", "start.sh"]
