@@ -27,6 +27,8 @@ from tenacity import (
 
 from ... import intervals
 from ...core.config_manager import Config
+from ..ext_utils.tmdb_utils import get_media_info_from_filename, format_tmdb_caption
+from ..ext_utils.channel_poster import send_channel_post, forward_video_to_channel
 from ...core.telegram_manager import TgClient
 from ..ext_utils.bot_utils import sync_to_async
 from ..ext_utils.files_utils import is_archive, get_base_name
@@ -138,6 +140,15 @@ class TelegramUploader:
         return True
 
     async def _prepare_file(self, file_, dirpath):
+        # PopCorn: Fetch TMDB movie/show info from filename
+        self._tmdb_info = {}
+        self._tmdb_file = file_
+        tmdb_api_key = Config.get("TMDB_API_KEY") or ""
+        if tmdb_api_key:
+            try:
+                self._tmdb_info = await get_media_info_from_filename(file_, tmdb_api_key)
+            except Exception as _tmdb_err:
+                LOGGER.warning(f"TMDB fetch failed for '{file_}': {_tmdb_err}")
         if self._lprefix:
             cap_mono = f"{self._lprefix} <code>{file_}</code>"
             self._lprefix = re_sub("<.*?>", "", self._lprefix)
@@ -146,6 +157,8 @@ class TelegramUploader:
             self._up_path = new_path
         else:
             cap_mono = f"<code>{file_}</code>"
+        if self._tmdb_info:
+            cap_mono = format_tmdb_caption(self._tmdb_info, file_)
         if len(file_) > 60:
             if is_archive(file_):
                 name = get_base_name(file_)
@@ -281,6 +294,22 @@ class TelegramUploader:
                     self._last_msg_in_group = False
                     self._last_uploaded = 0
                     await self._upload_file(cap_mono, file_, f_path)
+                    # PopCorn: post to private channel with TMDB poster + video
+                    if (
+                        self._sent_msg
+                        and not self._is_corrupted
+                        and Config.get("POPCORN_POST_TO_CHANNEL")
+                        and (self._sent_msg.video or self._sent_msg.document)
+                    ):
+                        try:
+                            _pclient = TgClient.user if self._user_session else self._listener.client
+                            _tmdb = getattr(self, "_tmdb_info", {})
+                            _tfile = getattr(self, "_tmdb_file", file_)
+                            await send_channel_post(_pclient, _tmdb, self._sent_msg, _tfile)
+                            _rich_cap = format_tmdb_caption(_tmdb, _tfile) if _tmdb else cap_mono
+                            await forward_video_to_channel(_pclient, self._sent_msg, _rich_cap)
+                        except Exception as _ce:
+                            LOGGER.error(f"PopCorn channel post error: {_ce}")
                     if self._sent_msg and self._sent_msg.media_group_id:
                         for ch, ch_data in list(
                             self._listener.clone_dump_chats.items()
