@@ -1,26 +1,25 @@
 name: Deploy to HuggingFace Space
 
-  on:
-    push:
-      branches: [master]
-    workflow_dispatch:
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
 
-  jobs:
-    deploy:
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout
-          uses: actions/checkout@v4
-          with:
-            fetch-depth: 0
-            lfs: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
 
-        - name: Push to HuggingFace Space
-          env:
-            HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          run: |
-            git config --global user.email "popcorn@bot.com"
-            git config --global user.name "PopCorn Bot"
-            git remote add hf https://ToolKit-backend:${HF_TOKEN}@huggingface.co/spaces/ToolKit-backend/popcorn-mirror-bot
-            git push hf master:main --force
-  
+      - name: Push to HuggingFace Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git config --global user.email "popcorn@bot.com"
+          git config --global user.name "PopCorn Bot"
+          git remote add hf https://ToolKit-backend:${HF_TOKEN}@huggingface.co/spaces/ToolKit-backend/popcorn-mirror-bot
+          git push hf master:main --force
