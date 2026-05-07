@@ -30,6 +30,9 @@ class Config:
     JD_EMAIL = ""
     JD_PASS = ""
     LEECH_DUMP_CHAT = ""
+    TMDB_API_KEY = ""
+    POPCORN_CHANNEL_ID = 0
+    POPCORN_POST_TO_CHANNEL = False
     LEECH_FILENAME_PREFIX = ""
     LEECH_SPLIT_SIZE = 2097152000
     MEDIA_GROUP = False
